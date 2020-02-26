@@ -50,9 +50,9 @@ Handles window creation, objects, shaders, and text rendering.
 ### Getting Started
 If you haven't already installed Xela Graphics, make sure you read the [Installation](#installation) instructions to find out how.
 
-The [full documentation](Docs/Full%20Doc.md) is available in docs and contains information on every function in Xela Graphics.
+The [full documentation](docs/Full%20Doc.md) is available in docs and contains information on every function in Xela Graphics.
 
-The [condensed documentation](Docs/Condensed%20Doc.md) is available in docs and contains information on every function that someone using this library may need.
+The [condensed documentation](docs/Condensed%20Doc.md) is available in docs and contains information on every function that someone using this library may need.
 
 There's also some [sample code](sample) showing simple programs using the library.
 
