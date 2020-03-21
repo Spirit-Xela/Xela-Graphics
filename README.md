@@ -29,8 +29,7 @@ Handles window creation, objects, shaders, and text rendering.
       * Select OK.
     * Go to Linker -> General.
     * Click Additional Library Directories, then click the down arrow on the right side and select edit.
-      * Add the path to xelagraphics_(version)_(x86/x64)/xelagraphics/(debug/release)
-        * Xela Graphics is currently a static library, meaning there's both a debug and release version. In visual studio, in the debug configuration you have to use the debug folder. In the release configuration, you have to use the release folder.
+      * Add the path to xelagraphics_(version)_(x86/x64)/xelagraphics/lib
       * Add the path to xelagraphics_(version)_(x86/x64)/glfw_(version)/lib-vc2019
       * Add the path to xelagraphics_(version)_(x86/x64)/glew_(version)/(x86/x64)
       * Add the path to xelagraphics_(version)_(x86/x64)/freetype_(version)/(win32/win64)
@@ -44,17 +43,20 @@ Handles window creation, objects, shaders, and text rendering.
         * freetype.lib
         * xelagraphics.lib
       * Select OK.
+    * Make sure all the DLLs are copied to the same folder your program's EXE file will be located in
+      * xelagraphics.dll: xelagraphics_(version)_(x86,x64)/xelagraphics/lib
+      * glfw3.dll: xelagraphics_(version)_(x86/x64)/glfw_(version)/lib-vc2019
+      * glew32.dll: xelagraphics_(version)_(x86/x64)/glew_(version)/(x86/x64)
+      * freetype.dll: xelagraphics_(version)_(x86/x64)/freetype_(version)/(win32/win64)
     * Click apply.
 * You're done! You can now use Xela Graphics in your project.
 
 ### Getting Started
 If you haven't already installed Xela Graphics, make sure you read the [Installation](#installation) instructions to find out how.
 
-The [full documentation](docs/Full%20Doc.md) is available in docs and contains information on every function in Xela Graphics.
+The [documentation](doc) contains information on every function in Xela Graphics you might need to use while writing a program.
 
-The [condensed documentation](docs/Condensed%20Doc.md) is available in docs and contains information on every function that someone using this library may need.
-
-There's also some [sample code](sample) showing simple programs using the library.
+There's also some [sample code](sample) showing some of the features of the library.
 
 ### Credits
 **Author - Alex Morse:** morse.alex.j@gmail.com
