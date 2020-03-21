@@ -2,6 +2,8 @@
 A small OpenGL library using glew and glfw to make graphics programming in C++ easier.
 Handles window creation, objects, shaders, and text rendering.
 
+#### Current version: 1.2.0
+
 ### Table of Contents
 * [Installation](#installation)
 * [Getting Started](#getting-started)
