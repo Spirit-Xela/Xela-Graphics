@@ -1,24 +1,33 @@
+//Xela Graphics
 #include "XelaEvents.h"
 
+//C++
+#if XELA_DEBUG_EVENTS
+#include <iostream>
+#endif
+#include <unordered_map>
+
 //List of key events to be processed.
-std::unordered_map<int, KeyInfo> keyBuffer;
+static std::unordered_map<int, XelaKeyInfo> keyBuffer;
 //List of mouse button events to be processed.
-std::unordered_map<int, MouseButtonInfo> mouseBuffer;
+static std::unordered_map<int, XelaMouseButtonInfo> mouseBuffer;
 //List of GLFWwindows and their associated XelaWindows.
-std::unordered_map<GLFWwindow *, XelaWindow *> windowList;
+static std::unordered_map<GLFWwindow *, XelaWindow *> windowList;
 
 //Function to be called to process key events.
-XelaKeyCallback keyCB = nullptr;
+static XelaKeyCallback keyCB = nullptr;
 //Function to be called to process mouse button events.
-XelaMouseButtonCallback mouseButtonCB = nullptr;
+static XelaMouseButtonCallback mouseButtonCB = nullptr;
 //Function to be called to process cursor position events.
-XelaCursorPosCallback cursorPosCB = nullptr;
+static XelaCursorPosCallback cursorPosCB = nullptr;
+//Function to be called whenever a window is resized
+static XelaWindowSizeCallback windowSizeCB = nullptr;
 
 void xelaAddWindow(GLFWwindow *key, XelaWindow *window) {
 	windowList.emplace(key, window);
 }
 
-void xelaAddKeyToBuffer(KeyInfo info) {
+void xelaAddKeyToBuffer(XelaKeyInfo info) {
 	if (keyBuffer.count(info.key)) {
 		//Key already exists, update data.
 		keyBuffer.at(info.key) = info;
@@ -27,12 +36,12 @@ void xelaAddKeyToBuffer(KeyInfo info) {
 		//Key does not exist, emplace data.
 		keyBuffer.emplace(info.key, info);
 	}
-#ifdef XELA_DEBUG_EVENTS
+	#if XELA_DEBUG_EVENTS
 	//Print key.
 	std::cout << "[Message][XelaEvents] Added key to KeyBuffer: " << info.key << std::endl;
-#endif
+	#endif
 }
-void xelaAddMouseToBuffer(MouseButtonInfo info) {
+void xelaAddMouseToBuffer(XelaMouseButtonInfo info) {
 	if (mouseBuffer.count(info.button)) {
 		//Key already exists, update data.
 		mouseBuffer.at(info.button) = info;
@@ -41,23 +50,31 @@ void xelaAddMouseToBuffer(MouseButtonInfo info) {
 		//Key does not exist, emplace data.
 		mouseBuffer.emplace(info.button, info);
 	}
-#ifdef XELA_DEBUG_EVENTS
+	#if XELA_DEBUG_EVENTS
 	//Print key.
 	std::cout << "[Message][XelaEvents] Added mouse button to MouseBuffer: " << info.key << std::endl;
-#endif
+	#endif
 }
-void xelaUpdateCursorPos(CursorPosInfo info) {
+void xelaUpdateCursorPos(XelaCursorPosInfo info) {
 	if (cursorPosCB != nullptr) {
 		cursorPosCB(info.window, info.xpos, info.ypos);
 	}
-#ifdef XELA_DEBUG_EVENTS
+	#if XELA_DEBUG_EVENTS
 	//Print button.
 	std::cout << "[Message][XelaEvents] Processed cursor position: " << info.xpos << ", " << info.ypos << ", " << std::endl;
-#endif
+	#endif
+}
+void xelaUpdateWindowSize(XelaWindowSizeInfo info) {
+	if (windowSizeCB != nullptr) {
+		windowSizeCB(info.window, info.width, info.height);
+	}
+	#if XELA_DEBUG_EVENTS
+	std::cout << "[Message][XelaEvents] Processed new window size: " << info.width << ", " << info.height << std::endl;
+	#endif
 }
 
-void processKeys() {
-	std::unordered_map<int, KeyInfo>::iterator it = keyBuffer.begin(), tmp;
+static void xelagraphics_processKeys() {
+	std::unordered_map<int, XelaKeyInfo>::iterator it = keyBuffer.begin(), tmp;
 	while (it != keyBuffer.end()) {
 		if (keyCB != nullptr) {
 			keyCB(it->second.window, it->second.key, it->second.scancode, it->second.action, it->second.mods);
@@ -75,8 +92,8 @@ void processKeys() {
 		}
 	}
 }
-void processMouse() {
-	std::unordered_map<int, MouseButtonInfo>::iterator it = mouseBuffer.begin(), tmp;
+static void xelagraphics_processMouse() {
+	std::unordered_map<int, XelaMouseButtonInfo>::iterator it = mouseBuffer.begin(), tmp;
 	while (it != mouseBuffer.end()) {
 		if (mouseButtonCB != nullptr) {
 			mouseButtonCB(it->second.window, it->second.button, it->second.action, it->second.mods);
@@ -94,9 +111,9 @@ void processMouse() {
 		}
 	}
 }
-void xelaProcessEvents() {
-	processKeys();
-	processMouse();
+void xelaGraphicsProcessEvents() {
+	xelagraphics_processKeys();
+	xelagraphics_processMouse();
 }
 
 void xelaSetKeyCallback(XelaKeyCallback cb) {
@@ -108,8 +125,11 @@ void xelaSetMouseButtonCallback(XelaMouseButtonCallback cb) {
 void xelaSetCursorPosCallback(XelaCursorPosCallback cb) {
 	cursorPosCB = cb;
 }
+void xelaSetWindowSizeCallback(XelaWindowSizeCallback cb) {
+	windowSizeCB = cb;
+}
 
-XelaWindow* getXelaWindow(GLFWwindow *key) {
+XelaWindow *getXelaWindow(GLFWwindow *key) {
 	if (windowList.count(key))
 		return windowList.at(key);
 	return nullptr;

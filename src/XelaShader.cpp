@@ -1,192 +1,12 @@
+//Xela Graphics
 #include "XelaShader.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
-//These functions are wrapped in case they need to be used somewhere else since the stb_image implementation is setup here.
-void xela_wrap_stbi_set_flip_vertically_on_load(bool val) {
-	stbi_set_flip_vertically_on_load(val);
-}
-void xela_wrap_stbi_image_free(void *data) {
-	stbi_image_free(data);
-}
-unsigned char *xela_wrap_stbi_load(const char *path, int *width, int *height, int *channels, int reqChannels) {
-	return stbi_load(path, width, height, channels, reqChannels);
-}
-
-XelaShader::XelaShader(const char *shaderV, const char *shaderG, const char *shaderF) {
-	srcVert = std::string(shaderV);
-	if (shaderG != nullptr) {
-		srcGeo = std::string(shaderG);
-	}
-	srcFrag = std::string(shaderF);
-	this->compile();
-}
-XelaShader::XelaShader(XelaShader *s) {
-	shaderProgram = s->getProgram();
-}
-
-void XelaShader::compile() {
-	const char *vSrc = srcVert.c_str();
-	const char *gSrc = srcGeo.c_str();
-	const char *fSrc = srcFrag.c_str();
-
-	int success;
-	char infoLog[512];
-
-	if (vertexShader != -1) {
-		//This shader has been compiled before, remove the redundant shader.
-		glDeleteShader(vertexShader);
-	}
-
-	//Create vertex shader.
-	vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertexShader, 1, &vSrc, nullptr);
-	glCompileShader(vertexShader);
-
-	//Error check.
-	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-	if (!success) {
-#ifdef XELA_DEBUG_SHADER
-		//Print error.
-		glGetShaderInfoLog(vertexShader, 512, nullptr, infoLog);
-		std::cout << "[ERROR][XelaShader] Error compiling vertex shader: " << infoLog << std::endl;
+//C++
+#if XELA_DEBUG_SHADER
+#include <iostream>
 #endif
-		//Delete shader and return.
-		glDeleteShader(vertexShader);
-		return;
-	}
 
-	if (geometryShader != -1) {
-		//This shader has been compiled before, remove the redundant shader.
-		glDeleteShader(geometryShader);
-		geometryShader = -1;
-	}
-
-	//Create geometry shader if one is defined.
-	if (srcGeo != "") {
-		geometryShader = glCreateShader(GL_GEOMETRY_SHADER);
-		glShaderSource(geometryShader, 1, &gSrc, nullptr);
-		glCompileShader(geometryShader);
-
-		//Error check.
-		glGetShaderiv(geometryShader, GL_COMPILE_STATUS, &success);
-		if (!success) {
-#ifdef XELA_DEBUG_SHADER
-			//Print error.
-			glGetShaderInfoLog(geometryShader, 512, nullptr, infoLog);
-			std::cout << "[ERROR][XelaShader] Error compiling geometry shader: " << infoLog << std::endl;
-#endif
-			//Delete shader and return.
-			glDeleteShader(geometryShader);
-			return;
-		}
-	}
-
-	if (fragmentShader != -1) {
-		//This shader has been compiled before, remove the redundant shader.
-		glDeleteShader(fragmentShader);
-	}
-
-	//Create fragment shader.
-	fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragmentShader, 1, &fSrc, nullptr);
-	glCompileShader(fragmentShader);
-
-	//Error check.
-	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-	if (!success) {
-#ifdef XELA_DEBUG_SHADER
-		//Print error.
-		glGetShaderInfoLog(fragmentShader, 512, nullptr, infoLog);
-		std::cout << "[ERROR][XelaShader] Error compiling fragment shader: " << infoLog << std::endl;
-#endif
-		//Delete shaders and return.
-		glDeleteShader(vertexShader);
-		glDeleteShader(fragmentShader);
-		return;
-	}
-
-	if (shaderProgram != -1) {
-		//This shader has been compiled before, remove the redundant shader.
-		glDeleteProgram(shaderProgram);
-	}
-
-	//Create program.
-	shaderProgram = glCreateProgram();
-	glAttachShader(shaderProgram, vertexShader);
-	if (srcGeo != "") {
-		glAttachShader(shaderProgram, geometryShader);
-	}
-	glAttachShader(shaderProgram, fragmentShader);
-	glLinkProgram(shaderProgram);
-
-	//Error Check.
-	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-	if (!success) {
-	}
-
-	//Cleanup
-	delete vSrc;
-	if (srcGeo != "") {
-		delete gSrc;
-	}
-	delete fSrc;
-	srcVert = "";
-	srcGeo = "";
-	srcFrag = "";
-}
-void XelaShader::setShader(const char *shaderV, const char *shaderG, const char *shaderF) {
-	//Update shader src based on type and recompile.
-	srcVert = shaderV;
-	srcGeo = shaderG;
-	srcFrag = shaderF;
-	this->compile();
-}
-
-void XelaShader::addImage(const char *tPath, const char *name, int *width, int *height, int *numChannels, int inputFormat, int textureFormat) {
-	//Load data with stb_image.
-	stbi_set_flip_vertically_on_load(true);
-	unsigned char *data = stbi_load(tPath, width, height, numChannels, 0);
-
-	//Add new entry in texList.
-	texList.push_back({ name, 0 });
-
-	//Generate OpenGL texture.
-	glGenTextures(1, &texList[texList.size() - 1].id);
-	glBindTexture(GL_TEXTURE_2D, texList[texList.size() - 1].id);
-	glTexImage2D(GL_TEXTURE_2D, 0, inputFormat, *width, *height, 0, textureFormat, GL_UNSIGNED_BYTE, data);
-	glGenerateMipmap(GL_TEXTURE_2D);
-
-	//Free data.
-	stbi_image_free(data);
-}
-void XelaShader::addTexture(GLuint id, const char *name) {
-	bool found = false;
-	for (int i = 0; i < texList.size(); i++) {
-		if (std::string(texList[i].name) == std::string(name)) {
-			texList[i].id = id;
-			found = true;
-			break;
-		}
-	}
-	if (!found) {
-		texList.push_back({ name, id });
-	}
-}
-
-void XelaShader::addShaderCallback(XelaShaderCallbackFunction func) {
-	shaderCB.push_back(func);
-}
-void XelaShader::removeShaderCallback(XelaShaderCallbackFunction func) {
-	for (int i = 0; i < shaderCB.size(); i++) {
-		if (shaderCB[i] == func) {
-			shaderCB.erase(shaderCB.begin() + i, shaderCB.begin() + i + 1);
-		}
-	}
-}
-
-bool XelaShader::getBool(int type, void *data) {
+static bool xelaGetBool(int type, void *data) {
 	switch (type) {
 		case XELA_BOOL:
 			return *((bool *)data);
@@ -205,7 +25,7 @@ bool XelaShader::getBool(int type, void *data) {
 			break;
 	}
 }
-int XelaShader::getInt(int type, void *data) {
+static int xelaGetInt(int type, void *data) {
 	switch (type) {
 		case XELA_BOOL:
 			return (int)*((bool *)data);
@@ -224,7 +44,7 @@ int XelaShader::getInt(int type, void *data) {
 			break;
 	}
 }
-unsigned int XelaShader::getUnsignedInt(int type, void *data) {
+static unsigned int xelaGetUnsignedInt(int type, void *data) {
 	switch (type) {
 		case XELA_BOOL:
 			return (unsigned int)*((bool *)data);
@@ -243,7 +63,7 @@ unsigned int XelaShader::getUnsignedInt(int type, void *data) {
 			break;
 	}
 }
-float XelaShader::getFloat(int type, void *data) {
+static float xelaGetFloat(int type, void *data) {
 	switch (type) {
 		case XELA_BOOL:
 			return (float)*((bool *)data);
@@ -262,7 +82,7 @@ float XelaShader::getFloat(int type, void *data) {
 			break;
 	}
 }
-double XelaShader::getDouble(int type, void *data) {
+static double xelaGetDouble(int type, void *data) {
 	switch (type) {
 		case XELA_BOOL:
 			return (double)*((bool *)data);
@@ -282,247 +102,402 @@ double XelaShader::getDouble(int type, void *data) {
 	}
 }
 
-void XelaShader::setBoolUniform(XelaUniformInfo info) {
+static void xelaSetBoolUniform(XelaShader *s, XelaUniformInfo info) {
 	switch (info.size) {
 		case 1: {
-			bool out = getBool(info.inFormat, info.data);
-			glUniform1i(glGetUniformLocation(shaderProgram, info.name), out);
+			bool out = xelaGetBool(info.inFormat, info.data);
+			glUniform1i(glGetUniformLocation(s->shaderProgram, info.name), out);
 			break;
 		}
 		case 2: {
 			XelaVec2<void *> *vec2 = (XelaVec2<void *> *)info.data;
-			bool b1 = getBool(info.inFormat, vec2->x);
-			bool b2 = getBool(info.inFormat, vec2->y);
-			glUniform2i(glGetUniformLocation(shaderProgram, info.name), b1, b2);
+			bool b1 = xelaGetBool(info.inFormat, vec2->x);
+			bool b2 = xelaGetBool(info.inFormat, vec2->y);
+			glUniform2i(glGetUniformLocation(s->shaderProgram, info.name), b1, b2);
 			break;
 		}
 		case 3: {
 			XelaVec3<void *> *vec3 = (XelaVec3<void *> *)info.data;
-			bool b1 = getBool(info.inFormat, vec3->x);
-			bool b2 = getBool(info.inFormat, vec3->y);
-			bool b3 = getBool(info.inFormat, vec3->z);
-			glUniform3i(glGetUniformLocation(shaderProgram, info.name), b1, b2, b3);
+			bool b1 = xelaGetBool(info.inFormat, vec3->x);
+			bool b2 = xelaGetBool(info.inFormat, vec3->y);
+			bool b3 = xelaGetBool(info.inFormat, vec3->z);
+			glUniform3i(glGetUniformLocation(s->shaderProgram, info.name), b1, b2, b3);
 			break;
 		}
 		case 4: {
 			XelaVec4<void *> *vec4 = (XelaVec4<void *> *)info.data;
-			bool b1 = getBool(info.inFormat, vec4->x);
-			bool b2 = getBool(info.inFormat, vec4->y);
-			bool b3 = getBool(info.inFormat, vec4->z);
-			bool b4 = getBool(info.inFormat, vec4->w);
-			glUniform4i(glGetUniformLocation(shaderProgram, info.name), b1, b2, b3, b4);
+			bool b1 = xelaGetBool(info.inFormat, vec4->x);
+			bool b2 = xelaGetBool(info.inFormat, vec4->y);
+			bool b3 = xelaGetBool(info.inFormat, vec4->z);
+			bool b4 = xelaGetBool(info.inFormat, vec4->w);
+			glUniform4i(glGetUniformLocation(s->shaderProgram, info.name), b1, b2, b3, b4);
 			break;
 		}
 	}
 }
-void XelaShader::setIntUniform(XelaUniformInfo info) {
+static void xelaSetIntUniform(XelaShader *s, XelaUniformInfo info) {
 	switch (info.size) {
 		case 1: {
-			int i = getInt(info.inFormat, info.data);
-			glUniform1i(glGetUniformLocation(shaderProgram, info.name), i);
+			int i = xelaGetInt(info.inFormat, info.data);
+			glUniform1i(glGetUniformLocation(s->shaderProgram, info.name), i);
 			break;
 		}
 		case 2: {
 			XelaVec2<void *> *vec2 = (XelaVec2<void *> *)info.data;
-			int i1 = getInt(info.inFormat, vec2->x);
-			int i2 = getInt(info.inFormat, vec2->y);
-			glUniform2i(glGetUniformLocation(shaderProgram, info.name), i1, i2);
+			int i1 = xelaGetInt(info.inFormat, vec2->x);
+			int i2 = xelaGetInt(info.inFormat, vec2->y);
+			glUniform2i(glGetUniformLocation(s->shaderProgram, info.name), i1, i2);
 			break;
 		}
 		case 3: {
 			XelaVec3<void *> *vec3 = (XelaVec3<void *> *)info.data;
-			int i1 = getInt(info.inFormat, vec3->x);
-			int i2 = getInt(info.inFormat, vec3->y);
-			int i3 = getInt(info.inFormat, vec3->z);
-			glUniform3i(glGetUniformLocation(shaderProgram, info.name), i1, i2, i3);
+			int i1 = xelaGetInt(info.inFormat, vec3->x);
+			int i2 = xelaGetInt(info.inFormat, vec3->y);
+			int i3 = xelaGetInt(info.inFormat, vec3->z);
+			glUniform3i(glGetUniformLocation(s->shaderProgram, info.name), i1, i2, i3);
 			break;
 		}
 		case 4: {
 			XelaVec4<void *> *vec4 = (XelaVec4<void *> *)info.data;
-			int i1 = getInt(info.inFormat, vec4->x);
-			int i2 = getInt(info.inFormat, vec4->y);
-			int i3 = getInt(info.inFormat, vec4->z);
-			int i4 = getInt(info.inFormat, vec4->w);
-			glUniform4i(glGetUniformLocation(shaderProgram, info.name), i1, i2, i3, i4);
+			int i1 = xelaGetInt(info.inFormat, vec4->x);
+			int i2 = xelaGetInt(info.inFormat, vec4->y);
+			int i3 = xelaGetInt(info.inFormat, vec4->z);
+			int i4 = xelaGetInt(info.inFormat, vec4->w);
+			glUniform4i(glGetUniformLocation(s->shaderProgram, info.name), i1, i2, i3, i4);
 			break;
 		}
 	}
 }
-void XelaShader::setUnsignedIntUniform(XelaUniformInfo info) {
+static void xelaSetUnsignedIntUniform(XelaShader *s, XelaUniformInfo info) {
 	switch (info.size) {
 		case 1: {
-			unsigned int u = getUnsignedInt(info.inFormat, info.data);
-			glUniform1ui(glGetUniformLocation(shaderProgram, info.name), u);
+			unsigned int u = xelaGetUnsignedInt(info.inFormat, info.data);
+			glUniform1ui(glGetUniformLocation(s->shaderProgram, info.name), u);
 			break;
 		}
 		case 2: {
 			XelaVec2<void *> *vec2 = (XelaVec2<void *> *)info.data;
-			unsigned int u1 = getUnsignedInt(info.inFormat, vec2->x);
-			unsigned int u2 = getUnsignedInt(info.inFormat, vec2->y);
-			glUniform2ui(glGetUniformLocation(shaderProgram, info.name), u1, u2);
+			unsigned int u1 = xelaGetUnsignedInt(info.inFormat, vec2->x);
+			unsigned int u2 = xelaGetUnsignedInt(info.inFormat, vec2->y);
+			glUniform2ui(glGetUniformLocation(s->shaderProgram, info.name), u1, u2);
 			break;
 		}
 		case 3: {
 			XelaVec3<void *> *vec3 = (XelaVec3<void *> *)info.data;
-			unsigned int u1 = getUnsignedInt(info.inFormat, vec3->x);
-			unsigned int u2 = getUnsignedInt(info.inFormat, vec3->y);
-			unsigned int u3 = getUnsignedInt(info.inFormat, vec3->z);
-			glUniform3ui(glGetUniformLocation(shaderProgram, info.name), u1, u2, u3);
+			unsigned int u1 = xelaGetUnsignedInt(info.inFormat, vec3->x);
+			unsigned int u2 = xelaGetUnsignedInt(info.inFormat, vec3->y);
+			unsigned int u3 = xelaGetUnsignedInt(info.inFormat, vec3->z);
+			glUniform3ui(glGetUniformLocation(s->shaderProgram, info.name), u1, u2, u3);
 			break;
 		}
 		case 4: {
 			XelaVec4<void *> *vec4 = (XelaVec4<void *> *)info.data;
-			unsigned int u1 = getUnsignedInt(info.inFormat, vec4->x);
-			unsigned int u2 = getUnsignedInt(info.inFormat, vec4->y);
-			unsigned int u3 = getUnsignedInt(info.inFormat, vec4->z);
-			unsigned int u4 = getUnsignedInt(info.inFormat, vec4->w);
-			glUniform4ui(glGetUniformLocation(shaderProgram, info.name), u1, u2, u3, u4);
+			unsigned int u1 = xelaGetUnsignedInt(info.inFormat, vec4->x);
+			unsigned int u2 = xelaGetUnsignedInt(info.inFormat, vec4->y);
+			unsigned int u3 = xelaGetUnsignedInt(info.inFormat, vec4->z);
+			unsigned int u4 = xelaGetUnsignedInt(info.inFormat, vec4->w);
+			glUniform4ui(glGetUniformLocation(s->shaderProgram, info.name), u1, u2, u3, u4);
 			break;
 		}
 	}
 }
-void XelaShader::setFloatUniform(XelaUniformInfo info) {
+static void xelaSetFloatUniform(XelaShader *s, XelaUniformInfo info) {
 	switch (info.size) {
 		case 1: {
-			float f = getFloat(info.inFormat, info.data);
-			glUniform1f(glGetUniformLocation(shaderProgram, info.name), f);
+			float f = xelaGetFloat(info.inFormat, info.data);
+			glUniform1f(glGetUniformLocation(s->shaderProgram, info.name), f);
 			break;
 		}
 		case 2: {
 			XelaVec2<void *> *vec2 = (XelaVec2<void *> *)info.data;
-			float f1 = getFloat(info.inFormat, vec2->x);
-			float f2 = getFloat(info.inFormat, vec2->y);
-			glUniform2f(glGetUniformLocation(shaderProgram, info.name), f1, f2);
+			float f1 = xelaGetFloat(info.inFormat, vec2->x);
+			float f2 = xelaGetFloat(info.inFormat, vec2->y);
+			glUniform2f(glGetUniformLocation(s->shaderProgram, info.name), f1, f2);
 			break;
 		}
 		case 3: {
 			XelaVec3<void *> *vec3 = (XelaVec3<void *> *)info.data;
-			float f1 = getFloat(info.inFormat, vec3->x);
-			float f2 = getFloat(info.inFormat, vec3->y);
-			float f3 = getFloat(info.inFormat, vec3->z);
-			glUniform3f(glGetUniformLocation(shaderProgram, info.name), f1, f2, f3);
+			float f1 = xelaGetFloat(info.inFormat, vec3->x);
+			float f2 = xelaGetFloat(info.inFormat, vec3->y);
+			float f3 = xelaGetFloat(info.inFormat, vec3->z);
+			glUniform3f(glGetUniformLocation(s->shaderProgram, info.name), f1, f2, f3);
 			break;
 		}
 		case 4: {
 			XelaVec4<void *> *vec4 = (XelaVec4<void *> *)info.data;
-			float f1 = getFloat(info.inFormat, vec4->x);
-			float f2 = getFloat(info.inFormat, vec4->y);
-			float f3 = getFloat(info.inFormat, vec4->z);
-			float f4 = getFloat(info.inFormat, vec4->w);
-			glUniform4f(glGetUniformLocation(shaderProgram, info.name), f1, f2, f3, f4);
+			float f1 = xelaGetFloat(info.inFormat, vec4->x);
+			float f2 = xelaGetFloat(info.inFormat, vec4->y);
+			float f3 = xelaGetFloat(info.inFormat, vec4->z);
+			float f4 = xelaGetFloat(info.inFormat, vec4->w);
+			glUniform4f(glGetUniformLocation(s->shaderProgram, info.name), f1, f2, f3, f4);
 			break;
 		}
 	}
 }
-void XelaShader::setDoubleUniform(XelaUniformInfo info) {
+static void xelaSetDoubleUniform(XelaShader *s, XelaUniformInfo info) {
 	switch (info.size) {
 		case 1: {
-			double d = getDouble(info.inFormat, info.data);
-			glUniform1d(glGetUniformLocation(shaderProgram, info.name), d);
+			double d = xelaGetDouble(info.inFormat, info.data);
+			glUniform1d(glGetUniformLocation(s->shaderProgram, info.name), d);
 			break;
 		}
 		case 2: {
 			XelaVec2<void *> *vec2 = (XelaVec2<void *> *)info.data;
-			double d1 = getDouble(info.inFormat, vec2->x);
-			double d2 = getDouble(info.inFormat, vec2->y);
-			glUniform2d(glGetUniformLocation(shaderProgram, info.name), d1, d2);
+			double d1 = xelaGetDouble(info.inFormat, vec2->x);
+			double d2 = xelaGetDouble(info.inFormat, vec2->y);
+			glUniform2d(glGetUniformLocation(s->shaderProgram, info.name), d1, d2);
 			break;
 		}
 		case 3: {
 			XelaVec3<void *> *vec3 = (XelaVec3<void *> *)info.data;
-			double d1 = getDouble(info.inFormat, vec3->x);
-			double d2 = getDouble(info.inFormat, vec3->y);
-			double d3 = getDouble(info.inFormat, vec3->z);
-			glUniform3d(glGetUniformLocation(shaderProgram, info.name), d1, d2, d3);
+			double d1 = xelaGetDouble(info.inFormat, vec3->x);
+			double d2 = xelaGetDouble(info.inFormat, vec3->y);
+			double d3 = xelaGetDouble(info.inFormat, vec3->z);
+			glUniform3d(glGetUniformLocation(s->shaderProgram, info.name), d1, d2, d3);
 			break;
 		}
 		case 4: {
 			XelaVec4<void *> *vec4 = (XelaVec4<void *> *)info.data;
-			double d1 = getDouble(info.inFormat, vec4->x);
-			double d2 = getDouble(info.inFormat, vec4->y);
-			double d3 = getDouble(info.inFormat, vec4->z);
-			double d4 = getDouble(info.inFormat, vec4->w);
-			glUniform4d(glGetUniformLocation(shaderProgram, info.name), d1, d2, d3, d4);
+			double d1 = xelaGetDouble(info.inFormat, vec4->x);
+			double d2 = xelaGetDouble(info.inFormat, vec4->y);
+			double d3 = xelaGetDouble(info.inFormat, vec4->z);
+			double d4 = xelaGetDouble(info.inFormat, vec4->w);
+			glUniform4d(glGetUniformLocation(s->shaderProgram, info.name), d1, d2, d3, d4);
 			break;
 		}
 	}
 }
-void XelaShader::setUniforms() {
+static void xelaSetUniforms(XelaShader *s) {
 	//Set texture uniforms.
-	for (int i = 0; i < texList.size(); i++) {
+	for (int i = 0; i < s->texList.size(); i++) {
+		XelaImageInfo curr = s->texList[i]->info;
+
 		glActiveTexture(GL_TEXTURE0 + i);
-		glBindTexture(GL_TEXTURE_2D, texList[i].id);
-		glUniform1i(glGetUniformLocation(shaderProgram, texList[i].name), i);
+		glBindTexture(GL_TEXTURE_2D, curr.id);
+		glUniform1i(glGetUniformLocation(s->shaderProgram, curr.name), i);
 	}
 	//Set other uniforms.
-	for (int i = 0; i < uniforms.size(); i++) {
-		switch (uniforms[i].outFormat) {
+	for (int i = 0; i < s->uniforms.size(); i++) {
+		switch (s->uniforms[i].outFormat) {
 			case XELA_BOOL:
-				setBoolUniform(uniforms[i]);
+				xelaSetBoolUniform(s, s->uniforms[i]);
 				break;
 			case XELA_INT:
-				setIntUniform(uniforms[i]);
+				xelaSetIntUniform(s, s->uniforms[i]);
 				break;
 			case XELA_UNSIGNED_INT:
-				setUnsignedIntUniform(uniforms[i]);
+				xelaSetUnsignedIntUniform(s, s->uniforms[i]);
 				break;
 			case XELA_FLOAT:
-				setFloatUniform(uniforms[i]);
+				xelaSetFloatUniform(s, s->uniforms[i]);
 				break;
 			case XELA_DOUBLE:
-				setDoubleUniform(uniforms[i]);
+				xelaSetDoubleUniform(s, s->uniforms[i]);
 				break;
 		}
-	}
-}
-void XelaShader::use() {
-	glUseProgram(shaderProgram);
-	setUniforms();
-	for (int i = 0; i < (int)shaderCB.size(); i++) {
-		shaderCB[i](shaderProgram);
 	}
 }
 
-void XelaShader::addUniform(const char *name, int inType, int outType, void *data) {
+static void xelaCompileShader(XelaShader *s, std::string srcVert, std::string srcGeo, std::string srcFrag) {
+	const char *vSrc = srcVert.c_str();
+	const char *gSrc = srcGeo.c_str();
+	const char *fSrc = srcFrag.c_str();
+
+	int success;
+	char infoLog[512];
+
+	if (s->vertexShader != -1) {
+		//This shader has been compiled before, remove the redundant shader.
+		glDeleteShader(s->vertexShader);
+	}
+
+	//Create vertex shader.
+	s->vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(s->vertexShader, 1, &vSrc, nullptr);
+	glCompileShader(s->vertexShader);
+
+	//Error check.
+	glGetShaderiv(s->vertexShader, GL_COMPILE_STATUS, &success);
+	if (!success) {
+		#if XELA_DEBUG_SHADER
+		//Print error.
+		glGetShaderInfoLog(s->vertexShader, 512, nullptr, infoLog);
+		std::cout << "[ERROR][XelaShader] Error compiling vertex shader: " << infoLog << std::endl;
+		#endif
+		//Delete shader and return.
+		glDeleteShader(s->vertexShader);
+		return;
+	}
+
+	if (s->geometryShader != -1) {
+		//This shader has been compiled before, remove the redundant shader.
+		glDeleteShader(s->geometryShader);
+		s->geometryShader = -1;
+	}
+
+	//Create geometry shader if one is defined.
+	if (srcGeo != "") {
+		s->geometryShader = glCreateShader(GL_GEOMETRY_SHADER);
+		glShaderSource(s->geometryShader, 1, &gSrc, nullptr);
+		glCompileShader(s->geometryShader);
+
+		//Error check.
+		glGetShaderiv(s->geometryShader, GL_COMPILE_STATUS, &success);
+		if (!success) {
+			#if XELA_DEBUG_SHADER
+			//Print error.
+			glGetShaderInfoLog(s->geometryShader, 512, nullptr, infoLog);
+			std::cout << "[ERROR][XelaShader] Error compiling geometry shader: " << infoLog << std::endl;
+			#endif
+			//Delete shader and return.
+			glDeleteShader(s->geometryShader);
+			return;
+		}
+	}
+
+	if (s->fragmentShader != -1) {
+		//This shader has been compiled before, remove the redundant shader.
+		glDeleteShader(s->fragmentShader);
+	}
+
+	//Create fragment shader.
+	s->fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(s->fragmentShader, 1, &fSrc, nullptr);
+	glCompileShader(s->fragmentShader);
+
+	//Error check.
+	glGetShaderiv(s->fragmentShader, GL_COMPILE_STATUS, &success);
+	if (!success) {
+		#if XELA_DEBUG_SHADER
+		//Print error.
+		glGetShaderInfoLog(s->fragmentShader, 512, nullptr, infoLog);
+		std::cout << "[ERROR][XelaShader] Error compiling fragment shader: " << infoLog << std::endl;
+		#endif
+		//Delete shaders and return.
+		glDeleteShader(s->vertexShader);
+		glDeleteShader(s->fragmentShader);
+		return;
+	}
+
+	if (s->shaderProgram != -1) {
+		//This shader has been compiled before, remove the redundant shader.
+		glDeleteProgram(s->shaderProgram);
+	}
+
+	//Create program.
+	s->shaderProgram = glCreateProgram();
+	glAttachShader(s->shaderProgram, s->vertexShader);
+	if (srcGeo != "") {
+		glAttachShader(s->shaderProgram, s->geometryShader);
+	}
+	glAttachShader(s->shaderProgram, s->fragmentShader);
+	glLinkProgram(s->shaderProgram);
+
+	//Error Check.
+	glGetProgramiv(s->shaderProgram, GL_LINK_STATUS, &success);
+	if (!success) {
+	}
+}
+XelaShader *XelaShader::genShader(const char *shaderV, const char *shaderG, const char *shaderF) {
+	XelaShader *shader = new XelaShader();
+	std::string vert = "", geo = "", frag = "";
+
+	vert = std::string(shaderV);
+	if (shaderG != nullptr) {
+		geo = std::string(shaderG);
+	}
+	frag = std::string(shaderF);
+
+	xelaCompileShader(shader, vert, geo, frag);
+
+	return shader;
+}
+XelaShader *XelaShader::copyShader(XelaShader *s) {
+	XelaShader *shader = new XelaShader();
+	shader->shaderProgram = s->shaderProgram;
+	return shader;
+}
+
+void XelaShader::setShader(XelaShader *s, const char *shaderV, const char *shaderG, const char *shaderF) {
+	//Update shader src based on type and recompile.
+	std::string vert, geo, frag;
+
+	vert = std::string(shaderV);
+	if (shaderG != nullptr) {
+		geo = std::string(shaderG);
+	}
+	frag = std::string(shaderF);
+	
+	xelaCompileShader(s, vert, geo, frag);
+}
+
+void XelaShader::genImage(XelaShader *s, const char *tPath, const char *name, int *width, int *height, int *numChannels, int inputFormat, int textureFormat) {
+	XelaImage *add = XelaImage::genImage(name, tPath, width, height, numChannels, inputFormat, textureFormat);
+	s->texList.push_back(add);
+}
+void XelaShader::addImage(XelaShader *s, XelaImage *i) {
+	s->texList.push_back(i);
+}
+
+void XelaShader::addTexture(XelaShader *s, GLuint id, const char *name) {
+	XelaImage *add = new XelaImage();
+	XelaImage::setName(add, name);
+	XelaImage::setID(add, id);
+	s->texList.push_back(add);
+}
+
+void XelaShader::addShaderCallback(XelaShader *s, ShaderCallbackFunction func) {
+	s->shaderCB.push_back(func);
+}
+void XelaShader::removeShaderCallback(XelaShader *s, ShaderCallbackFunction func) {
+	for (int i = 0; i < s->shaderCB.size(); i++) {
+		if (s->shaderCB[i] == func) {
+			s->shaderCB.erase(s->shaderCB.begin() + i, s->shaderCB.begin() + i + 1);
+		}
+	}
+}
+
+void XelaShader::use(XelaShader *s) {
+	glUseProgram(s->shaderProgram);
+	xelaSetUniforms(s);
+	for (int i = 0; i < (int)s->shaderCB.size(); i++) {
+		s->shaderCB[i](s->shaderProgram);
+	}
+}
+
+void XelaShader::addUniform(XelaShader *s, const char *name, int inType, int outType, void *data) {
 	XelaUniformInfo info;
 	info.name = name;
 	info.size = 1;
 	info.inFormat = inType;
 	info.outFormat = outType;
 	info.data = data;
-	uniforms.push_back(info);
+	s->uniforms.push_back(info);
 }
-void XelaShader::addUniformVec2(const char *name, int inType, int outType, void *data1, void *data2) {
+void XelaShader::addUniformVec2(XelaShader *s, const char *name, int inType, int outType, void *data1, void *data2) {
 	XelaUniformInfo info;
 	info.name = name;
 	info.size = 2;
 	info.inFormat = inType;
 	info.outFormat = outType;
 	info.data = new XelaVec2<void *>({ data1, data2 });
-	uniforms.push_back(info);
+	s->uniforms.push_back(info);
 }
-void XelaShader::addUniformVec3(const char *name, int inType, int outType, void *data1, void *data2, void *data3) {
+void XelaShader::addUniformVec3(XelaShader *s, const char *name, int inType, int outType, void *data1, void *data2, void *data3) {
 	XelaUniformInfo info;
 	info.name = name;
 	info.size = 3;
 	info.inFormat = inType;
 	info.outFormat = outType;
 	info.data = new XelaVec3<void *>({ data1, data2, data3 });
-	uniforms.push_back(info);
+	s->uniforms.push_back(info);
 }
-void XelaShader::addUniformVec4(const char *name, int inType, int outType, void *data1, void *data2, void *data3, void *data4) {
+void XelaShader::addUniformVec4(XelaShader *s, const char *name, int inType, int outType, void *data1, void *data2, void *data3, void *data4) {
 	XelaUniformInfo info;
 	info.name = name;
 	info.size = 4;
 	info.inFormat = inType;
 	info.outFormat = outType;
 	info.data = new XelaVec4<void *>({ data1, data2, data3, data4 });
-	uniforms.push_back(info);
-}
-
-std::vector<XelaImageInfo> XelaShader::getTexList() {
-	return texList;
-}
-unsigned int XelaShader::getProgram() {
-	return shaderProgram;
+	s->uniforms.push_back(info);
 }

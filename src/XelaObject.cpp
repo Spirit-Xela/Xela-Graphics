@@ -1,63 +1,71 @@
+//Libs
+#include "GL/glew.h"
+
+//Xela Graphics
 #include "XelaObject.h"
 
-XelaObject::XelaObject() {
+XelaObject *XelaObject::genObject() {
+	XelaObject *o = new XelaObject();
+
 	//Generate array/buffers for this object
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-	glGenBuffers(1, &EBO);
+	glGenVertexArrays(1, &o->VAO);
+	glGenBuffers(1, &o->VBO);
+	glGenBuffers(1, &o->EBO);
+
+	return o;
 }
 
-void XelaObject::genResData() {
-	resData.clear();
-	for (int i = 0; i < vertData.size(); i++) {
-		if (vertData[i].id == 0) {
+static void xelaGenObjectResData(XelaObject *o) {
+	o->resData.clear();
+	for (int i = 0; i < o->vertData.size(); i++) {
+		if (o->vertData[i].id == 0) {
 			//If id == 0, assume this is a vertex and use it to keep track of the object's size.
-			for (int k = 0; k < vertData[i].data.size(); k += vertData[i].dataSize) {
-				if (vertData[i].dataSize >= 3) {
-					maxZ = (vertData[i].data[k + 2] > maxZ) ? vertData[i].data[k] : maxZ;
-					minZ = (vertData[i].data[k + 2] < minZ) ? vertData[i].data[k] : minZ;
+			for (int k = 0; k < o->vertData[i].data.size(); k += o->vertData[i].dataSize) {
+				if (o->vertData[i].dataSize >= 3) {
+					o->maxZ = (o->vertData[i].data[k + 2] > o->maxZ) ? o->vertData[i].data[k] : o->maxZ;
+					o->minZ = (o->vertData[i].data[k + 2] < o->minZ) ? o->vertData[i].data[k] : o->minZ;
 				}
-				if (vertData[i].dataSize >= 2) {
-					maxY = (vertData[i].data[k + 1] > maxY) ? vertData[i].data[k] : maxY;
-					minY = (vertData[i].data[k + 1] < minY) ? vertData[i].data[k] : minY;
+				if (o->vertData[i].dataSize >= 2) {
+					o->maxY = (o->vertData[i].data[k + 1] > o->maxY) ? o->vertData[i].data[k] : o->maxY;
+					o->minY = (o->vertData[i].data[k + 1] < o->minY) ? o->vertData[i].data[k] : o->minY;
 				}
-				if (vertData[i].dataSize >= 1) {
-					maxX = (vertData[i].data[k] > maxX) ? vertData[i].data[k] : maxX;
-					minX = (vertData[i].data[k] < minX) ? vertData[i].data[k] : minX;
+				if (o->vertData[i].dataSize >= 1) {
+					o->maxX = (o->vertData[i].data[k] > o->maxX) ? o->vertData[i].data[k] : o->maxX;
+					o->minX = (o->vertData[i].data[k] < o->minX) ? o->vertData[i].data[k] : o->minX;
 				}
 			}
 		}
 
 		//Add to resData
-		for (int k = 0; k < vertData[i].data.size(); k++) {
-			resData.push_back(vertData[i].data[k]);
+		for (int k = 0; k < o->vertData[i].data.size(); k++) {
+			o->resData.push_back(o->vertData[i].data[k]);
 		}
 	}
 }
-void XelaObject::updateData() {
+void XelaObject::updateData(XelaObject *o) {
 	//Generate complete data array
-	genResData();
+	xelaGenObjectResData(o);
 
 	//Bind vertex array and buffer
-	glBindVertexArray(VAO);
+	glBindVertexArray(o->VAO);
 
 	//Save vertex data to buffer
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * resData.size(), resData.data(), GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, o->VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * o->resData.size(), o->resData.data(), GL_DYNAMIC_DRAW);
 
 	//Save index data to buffer
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices.size(), indices.data(), GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, o->EBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * o->indices.size(), o->indices.data(), GL_DYNAMIC_DRAW);
 
 	//Total offset between indices
 	int offset = 0;
-	for (int i = 0; i < vertData.size(); i++) {
+	for (int i = 0; i < o->vertData.size(); i++) {
 		//Setup vertex attribute at given id
-		glVertexAttribPointer(vertData[i].id, vertData[i].dataSize, GL_FLOAT, GL_FALSE, vertData[i].dataSize * sizeof(float), (void *)offset);
-		glEnableVertexAttribArray(vertData[i].id);
-		glVertexAttribDivisor(vertData[i].id, vertData[i].update);
+		glVertexAttribPointer(o->vertData[i].id, o->vertData[i].dataSize, GL_FLOAT, GL_FALSE, o->vertData[i].dataSize * sizeof(float), (void *)offset);
+		glEnableVertexAttribArray(o->vertData[i].id);
+		glVertexAttribDivisor(o->vertData[i].id, o->vertData[i].update);
 		//Add attribute's size to offset
-		offset += vertData[i].data.size() * sizeof(float);
+		offset += o->vertData[i].data.size() * sizeof(float);
 	}
 
 	//Unbind
@@ -65,101 +73,65 @@ void XelaObject::updateData() {
 	glBindVertexArray(0);
 }
 
-void XelaObject::addIndex(XelaVec3<unsigned int> ind) {
-	indices.push_back(ind.x);
-	indices.push_back(ind.y);
-	indices.push_back(ind.z);
+void XelaObject::addIndex(XelaObject *o, XelaVec3<unsigned int> ind) {
+	o->indices.push_back(ind.x);
+	o->indices.push_back(ind.y);
+	o->indices.push_back(ind.z);
 }
-void XelaObject::addIndices(std::vector<XelaVec3<unsigned int>> inds) {
-	for (int i = 0; i < inds.size(); i++) {
-		indices.push_back(inds[i].x);
-		indices.push_back(inds[i].y);
-		indices.push_back(inds[i].z);
-	}
-}
-void XelaObject::addIndices(XelaVec3<unsigned int> *inds, int count) {
+void XelaObject::addIndices(XelaObject *o, XelaVec3<unsigned int> *inds, int count) {
 	for (int i = 0; i < count; i++) {
-		indices.push_back(inds[i].x);
-		indices.push_back(inds[i].y);
-		indices.push_back(inds[i].z);
+		o->indices.push_back(inds[i].x);
+		o->indices.push_back(inds[i].y);
+		o->indices.push_back(inds[i].z);
 	}
 }
-void XelaObject::clearIndices() {
-	indices.clear();
+void XelaObject::clearIndices(XelaObject *o) {
+	o->indices.clear();
 }
-void XelaObject::setIndices(std::vector<XelaVec3<unsigned int>> inds) {
-	indices.clear();
-	for (int i = 0; i < inds.size(); i++) {
-		indices.push_back(inds[i].x);
-		indices.push_back(inds[i].y);
-		indices.push_back(inds[i].z);
-	}
-}
-void XelaObject::setIndices(XelaVec3<unsigned int> *inds, int count) {
-	indices.clear();
+void XelaObject::setIndices(XelaObject *o, XelaVec3<unsigned int> *inds, int count) {
+	o->indices.clear();
 	for (int i = 0; i < count; i++) {
-		indices.push_back(inds[i].x);
-		indices.push_back(inds[i].y);
-		indices.push_back(inds[i].z);
+		o->indices.push_back(inds[i].x);
+		o->indices.push_back(inds[i].y);
+		o->indices.push_back(inds[i].z);
 	}
 }
 
 
-void XelaObject::clearVertexData(int id) {
-	for (int i = 0; i < vertData.size(); i++) {
-		if (vertData[i].id == id) {
-			vertData.erase(vertData.begin() + i);
+void XelaObject::clearVertexData(XelaObject *o, int id) {
+	for (int i = 0; i < o->vertData.size(); i++) {
+		if (o->vertData[i].id == id) {
+			o->vertData.erase(o->vertData.begin() + i);
 			break;
 		}
 	}
 }
 
-void XelaObject::addVertexData(float vec, int id) {
+void XelaObject::addVertexDataf(XelaObject *o, float vec, int id) {
 	bool found = false;
-	for (int i = 0; i < vertData.size(); i++) {
-		if (vertData[i].id == id) {
+	for (int i = 0; i < o->vertData.size(); i++) {
+		if (o->vertData[i].id == id) {
 			found = true;
-			if (vertData[i].dataSize == 1) {
-				vertData[i].data.push_back(vec);
+			if (o->vertData[i].dataSize == 1) {
+				o->vertData[i].data.push_back(vec);
 			}
 			break;
 		}
 	}
 
 	if (!found) {
-		vertData.push_back({ id, 1, 0, *new std::vector<float> });
-		vertData[vertData.size() - 1].data.push_back(vec);
+		o->vertData.push_back({ id, 1, 0, *new std::vector<float> });
+		o->vertData[o->vertData.size() - 1].data.push_back(vec);
 	}
 }
-void XelaObject::addVertexData(std::vector<float> vec, int id) {
+void XelaObject::addVertexDatafv(XelaObject *o, float* vec, int count, int id) {
 	bool found = false;
-	for (int i = 0; i < vertData.size(); i++) {
-		if (vertData[i].id == id) {
+	for (int i = 0; i < o->vertData.size(); i++) {
+		if (o->vertData[i].id == id) {
 			found = true;
-			if (vertData[i].dataSize == 1) {
-				for (int k = 0; k < vec.size(); k++) {
-					vertData[i].data.push_back(vec[k]);
-				}
-			}
-			break;
-		}
-	}
-
-	if (!found) {
-		vertData.push_back({ id, 1, 0, *new std::vector<float> });
-		for (int k = 0; k < vec.size(); k++) {
-			vertData[vertData.size() - 1].data.push_back(vec[k]);
-		}
-	}
-}
-void XelaObject::addVertexData(float* vec, int count, int id) {
-	bool found = false;
-	for (int i = 0; i < vertData.size(); i++) {
-		if (vertData[i].id == id) {
-			found = true;
-			if (vertData[i].dataSize == 1) {
+			if (o->vertData[i].dataSize == 1) {
 				for (int k = 0; k < count; k++) {
-					vertData[i].data.push_back(vec[k]);
+					o->vertData[i].data.push_back(vec[k]);
 				}
 			}
 			break;
@@ -167,76 +139,49 @@ void XelaObject::addVertexData(float* vec, int count, int id) {
 	}
 
 	if (!found) {
-		vertData.push_back({ id, 1, 0, *new std::vector<float> });
+		o->vertData.push_back({ id, 1, 0, *new std::vector<float> });
 		for (int k = 0; k < count; k++) {
-			vertData[vertData.size() - 1].data.push_back(vec[k]);
+			o->vertData[o->vertData.size() - 1].data.push_back(vec[k]);
 		}
 	}
 }
-void XelaObject::setVertexData(float vec, int id) {
-	clearVertexData(id);
-	addVertexData(vec, id);
+void XelaObject::setVertexDataf(XelaObject *o, float vec, int id) {
+	XelaObject::clearVertexData(o, id);
+	XelaObject::addVertexDataf(o, vec, id);
 }
-void XelaObject::setVertexData(std::vector<float> vec, int id) {
-	clearVertexData(id);
-	addVertexData(vec, id);
-}
-void XelaObject::setVertexData(float* vec, int count, int id) {
-	clearVertexData(id);
-	addVertexData(vec, count, id);
+void XelaObject::setVertexDatafv(XelaObject *o, float* vec, int count, int id) {
+	XelaObject::clearVertexData(o, id);
+	XelaObject::addVertexDatafv(o, vec, count, id);
 }
 
-void XelaObject::addVertexData(XelaVec2<float> vec, int id) {
+void XelaObject::addVertexData2f(XelaObject *o, XelaVec2<float> vec, int id) {
 	bool found = false;
-	for (int i = 0; i < vertData.size(); i++) {
-		if (vertData[i].id == id) {
+	for (int i = 0; i < o->vertData.size(); i++) {
+		if (o->vertData[i].id == id) {
 			found = true;
-			if (vertData[i].dataSize == 2) {
-				vertData[i].data.push_back(vec.x);
-				vertData[i].data.push_back(vec.y);
+			if (o->vertData[i].dataSize == 2) {
+				o->vertData[i].data.push_back(vec.x);
+				o->vertData[i].data.push_back(vec.y);
 			}
 			break;
 		}
 	}
 
 	if (!found) {
-		vertData.push_back({ id, 2, 0, *new std::vector<float> });
-		vertData[vertData.size() - 1].data.push_back(vec.x);
-		vertData[vertData.size() - 1].data.push_back(vec.y);
+		o->vertData.push_back({ id, 2, 0, *new std::vector<float> });
+		o->vertData[o->vertData.size() - 1].data.push_back(vec.x);
+		o->vertData[o->vertData.size() - 1].data.push_back(vec.y);
 	}
 }
-void XelaObject::addVertexData(std::vector<XelaVec2<float>> vec, int id) {
+void XelaObject::addVertexData2fv(XelaObject *o, XelaVec2<float>* vec, int count, int id) {
 	bool found = false;
-	for (int i = 0; i < vertData.size(); i++) {
-		if (vertData[i].id == id) {
+	for (int i = 0; i < o->vertData.size(); i++) {
+		if (o->vertData[i].id == id) {
 			found = true;
-			if (vertData[i].dataSize == 2) {
-				for (int k = 0; k < vec.size(); k++) {
-					vertData[i].data.push_back(vec[k].x);
-					vertData[i].data.push_back(vec[k].y);
-				}
-			}
-			break;
-		}
-	}
-
-	if (!found) {
-		vertData.push_back({ id, 2, 0, *new std::vector<float> });
-		for (int k = 0; k < vec.size(); k++) {
-			vertData[vertData.size() - 1].data.push_back(vec[k].x);
-			vertData[vertData.size() - 1].data.push_back(vec[k].y);
-		}
-	}
-}
-void XelaObject::addVertexData(XelaVec2<float>* vec, int count, int id) {
-	bool found = false;
-	for (int i = 0; i < vertData.size(); i++) {
-		if (vertData[i].id == id) {
-			found = true;
-			if (vertData[i].dataSize == 2) {
+			if (o->vertData[i].dataSize == 2) {
 				for (int k = 0; k < count; k++) {
-					vertData[i].data.push_back(vec[k].x);
-					vertData[i].data.push_back(vec[k].y);
+					o->vertData[i].data.push_back(vec[k].x);
+					o->vertData[i].data.push_back(vec[k].y);
 				}
 			}
 			break;
@@ -244,82 +189,53 @@ void XelaObject::addVertexData(XelaVec2<float>* vec, int count, int id) {
 	}
 
 	if (!found) {
-		vertData.push_back({ id, 2, 0, *new std::vector<float> });
+		o->vertData.push_back({ id, 2, 0, *new std::vector<float> });
 		for (int k = 0; k < count; k++) {
-			vertData[vertData.size() - 1].data.push_back(vec[k].x);
-			vertData[vertData.size() - 1].data.push_back(vec[k].y);
+			o->vertData[o->vertData.size() - 1].data.push_back(vec[k].x);
+			o->vertData[o->vertData.size() - 1].data.push_back(vec[k].y);
 		}
 	}
 }
-void XelaObject::setVertexData(XelaVec2<float> vec, int id) {
-	clearVertexData(id);
-	addVertexData(vec, id);
+void XelaObject::setVertexData2f(XelaObject *o, XelaVec2<float> vec, int id) {
+	XelaObject::clearVertexData(o, id);
+	XelaObject::addVertexData2f(o, vec, id);
 }
-void XelaObject::setVertexData(std::vector<XelaVec2<float>> vec, int id) {
-	clearVertexData(id);
-	addVertexData(vec, id);
-}
-void XelaObject::setVertexData(XelaVec2<float>* vec, int count, int id) {
-	clearVertexData(id);
-	addVertexData(vec, count, id);
+void XelaObject::setVertexData2fv(XelaObject *o, XelaVec2<float>* vec, int count, int id) {
+	XelaObject::clearVertexData(o, id);
+	XelaObject::addVertexData2fv(o, vec, count, id);
 }
 
-void XelaObject::addVertexData(XelaVec3<float> vec, int id) {
+void XelaObject::addVertexData3f(XelaObject *o, XelaVec3<float> vec, int id) {
 	bool found = false;
-	for (int i = 0; i < vertData.size(); i++) {
-		if (vertData[i].id == id) {
+	for (int i = 0; i < o->vertData.size(); i++) {
+		if (o->vertData[i].id == id) {
 			found = true;
-			if (vertData[i].dataSize == 3) {
-				vertData[i].data.push_back(vec.x);
-				vertData[i].data.push_back(vec.y);
-				vertData[i].data.push_back(vec.z);
+			if (o->vertData[i].dataSize == 3) {
+				o->vertData[i].data.push_back(vec.x);
+				o->vertData[i].data.push_back(vec.y);
+				o->vertData[i].data.push_back(vec.z);
 			}
 			break;
 		}
 	}
 
 	if (!found) {
-		vertData.push_back({ id, 3, 0, *new std::vector<float> });
-		vertData[vertData.size() - 1].data.push_back(vec.x);
-		vertData[vertData.size() - 1].data.push_back(vec.y);
-		vertData[vertData.size() - 1].data.push_back(vec.z);
+		o->vertData.push_back({ id, 3, 0, *new std::vector<float> });
+		o->vertData[o->vertData.size() - 1].data.push_back(vec.x);
+		o->vertData[o->vertData.size() - 1].data.push_back(vec.y);
+		o->vertData[o->vertData.size() - 1].data.push_back(vec.z);
 	}
 }
-void XelaObject::addVertexData(std::vector<XelaVec3<float>> vec, int id) {
+void XelaObject::addVertexData3fv(XelaObject *o, XelaVec3<float>* vec, int count, int id) {
 	bool found = false;
-	for (int i = 0; i < vertData.size(); i++) {
-		if (vertData[i].id == id) {
+	for (int i = 0; i < o->vertData.size(); i++) {
+		if (o->vertData[i].id == id) {
 			found = true;
-			if (vertData[i].dataSize == 3) {
-				for (int k = 0; k < vec.size(); k++) {
-					vertData[i].data.push_back(vec[k].x);
-					vertData[i].data.push_back(vec[k].y);
-					vertData[i].data.push_back(vec[k].z);
-				}
-			}
-			break;
-		}
-	}
-
-	if (!found) {
-		vertData.push_back({ id, 3, 0, *new std::vector<float> });
-		for (int k = 0; k < vec.size(); k++) {
-			vertData[vertData.size() - 1].data.push_back(vec[k].x);
-			vertData[vertData.size() - 1].data.push_back(vec[k].y);
-			vertData[vertData.size() - 1].data.push_back(vec[k].z);
-		}
-	}
-}
-void XelaObject::addVertexData(XelaVec3<float>* vec, int count, int id) {
-	bool found = false;
-	for (int i = 0; i < vertData.size(); i++) {
-		if (vertData[i].id == id) {
-			found = true;
-			if (vertData[i].dataSize == 3) {
+			if (o->vertData[i].dataSize == 3) {
 				for (int k = 0; k < count; k++) {
-					vertData[i].data.push_back(vec[k].x);
-					vertData[i].data.push_back(vec[k].y);
-					vertData[i].data.push_back(vec[k].z);
+					o->vertData[i].data.push_back(vec[k].x);
+					o->vertData[i].data.push_back(vec[k].y);
+					o->vertData[i].data.push_back(vec[k].z);
 				}
 			}
 			break;
@@ -327,88 +243,57 @@ void XelaObject::addVertexData(XelaVec3<float>* vec, int count, int id) {
 	}
 
 	if (!found) {
-		vertData.push_back({ id, 3, 0, *new std::vector<float> });
+		o->vertData.push_back({ id, 3, 0, *new std::vector<float> });
 		for (int k = 0; k < count; k++) {
-			vertData[vertData.size() - 1].data.push_back(vec[k].x);
-			vertData[vertData.size() - 1].data.push_back(vec[k].y);
-			vertData[vertData.size() - 1].data.push_back(vec[k].z);
+			o->vertData[o->vertData.size() - 1].data.push_back(vec[k].x);
+			o->vertData[o->vertData.size() - 1].data.push_back(vec[k].y);
+			o->vertData[o->vertData.size() - 1].data.push_back(vec[k].z);
 		}
 	}
 }
-void XelaObject::setVertexData(XelaVec3<float> vec, int id) {
-	clearVertexData(id);
-	addVertexData(vec, id);
+void XelaObject::setVertexData3f(XelaObject *o, XelaVec3<float> vec, int id) {
+	XelaObject::clearVertexData(o, id);
+	XelaObject::addVertexData3f(o, vec, id);
 }
-void XelaObject::setVertexData(std::vector<XelaVec3<float>> vec, int id) {
-	clearVertexData(id);
-	addVertexData(vec, id);
-}
-void XelaObject::setVertexData(XelaVec3<float>* vec, int count, int id) {
-	clearVertexData(id);
-	addVertexData(vec, count, id);
+void XelaObject::setVertexData3fv(XelaObject *o, XelaVec3<float>* vec, int count, int id) {
+	XelaObject::clearVertexData(o, id);
+	XelaObject::addVertexData3fv(o, vec, count, id);
 }
 
-void XelaObject::addVertexData(XelaVec4<float> vec, int id) {
+void XelaObject::addVertexData4f(XelaObject *o, XelaVec4<float> vec, int id) {
 	bool found = false;
-	for (int i = 0; i < vertData.size(); i++) {
-		if (vertData[i].id == id) {
+	for (int i = 0; i < o->vertData.size(); i++) {
+		if (o->vertData[i].id == id) {
 			found = true;
-			if (vertData[i].dataSize == 4) {
-				vertData[i].data.push_back(vec.x);
-				vertData[i].data.push_back(vec.y);
-				vertData[i].data.push_back(vec.z);
-				vertData[i].data.push_back(vec.w);
+			if (o->vertData[i].dataSize == 4) {
+				o->vertData[i].data.push_back(vec.x);
+				o->vertData[i].data.push_back(vec.y);
+				o->vertData[i].data.push_back(vec.z);
+				o->vertData[i].data.push_back(vec.w);
 			}
 			break;
 		}
 	}
 
 	if (!found) {
-		vertData.push_back({ id, 4, 0, *new std::vector<float> });
-		vertData[vertData.size() - 1].data.push_back(vec.x);
-		vertData[vertData.size() - 1].data.push_back(vec.y);
-		vertData[vertData.size() - 1].data.push_back(vec.z);
-		vertData[vertData.size() - 1].data.push_back(vec.w);
+		o->vertData.push_back({ id, 4, 0, *new std::vector<float> });
+		o->vertData[o->vertData.size() - 1].data.push_back(vec.x);
+		o->vertData[o->vertData.size() - 1].data.push_back(vec.y);
+		o->vertData[o->vertData.size() - 1].data.push_back(vec.z);
+		o->vertData[o->vertData.size() - 1].data.push_back(vec.w);
 	}
 }
-void XelaObject::addVertexData(std::vector<XelaVec4<float>> vec, int id) {
+void XelaObject::addVertexData4fv(XelaObject *o, XelaVec4<float>* vec, int count, int id) {
 	bool found = false;
-	for (int i = 0; i < vertData.size(); i++) {
-		if (vertData[i].id == id) {
+	for (int i = 0; i < o->vertData.size(); i++) {
+		if (o->vertData[i].id == id) {
 			found = true;
-			if (vertData[i].dataSize == 4) {
-				for (int k = 0; k < vec.size(); k++) {
-					vertData[i].data.push_back(vec[k].x);
-					vertData[i].data.push_back(vec[k].y);
-					vertData[i].data.push_back(vec[k].z);
-					vertData[i].data.push_back(vec[k].w);
-				}
-			}
-			break;
-		}
-	}
-
-	if (!found) {
-		vertData.push_back({ id, 4, 0, *new std::vector<float> });
-		for (int k = 0; k < vec.size(); k++) {
-			vertData[vertData.size() - 1].data.push_back(vec[k].x);
-			vertData[vertData.size() - 1].data.push_back(vec[k].y);
-			vertData[vertData.size() - 1].data.push_back(vec[k].z);
-			vertData[vertData.size() - 1].data.push_back(vec[k].w);
-		}
-	}
-}
-void XelaObject::addVertexData(XelaVec4<float>* vec, int count, int id) {
-	bool found = false;
-	for (int i = 0; i < vertData.size(); i++) {
-		if (vertData[i].id == id) {
-			found = true;
-			if (vertData[i].dataSize == 4) {
+			if (o->vertData[i].dataSize == 4) {
 				for (int k = 0; k < count; k++) {
-					vertData[i].data.push_back(vec[k].x);
-					vertData[i].data.push_back(vec[k].y);
-					vertData[i].data.push_back(vec[k].z);
-					vertData[i].data.push_back(vec[k].w);
+					o->vertData[i].data.push_back(vec[k].x);
+					o->vertData[i].data.push_back(vec[k].y);
+					o->vertData[i].data.push_back(vec[k].z);
+					o->vertData[i].data.push_back(vec[k].w);
 				}
 			}
 			break;
@@ -416,43 +301,39 @@ void XelaObject::addVertexData(XelaVec4<float>* vec, int count, int id) {
 	}
 
 	if (!found) {
-		vertData.push_back({ id, 4, 0, *new std::vector<float> });
+		o->vertData.push_back({ id, 4, 0, *new std::vector<float> });
 		for (int k = 0; k < count; k++) {
-			vertData[vertData.size() - 1].data.push_back(vec[k].x);
-			vertData[vertData.size() - 1].data.push_back(vec[k].y);
-			vertData[vertData.size() - 1].data.push_back(vec[k].z);
-			vertData[vertData.size() - 1].data.push_back(vec[k].w);
+			o->vertData[o->vertData.size() - 1].data.push_back(vec[k].x);
+			o->vertData[o->vertData.size() - 1].data.push_back(vec[k].y);
+			o->vertData[o->vertData.size() - 1].data.push_back(vec[k].z);
+			o->vertData[o->vertData.size() - 1].data.push_back(vec[k].w);
 		}
 	}
 }
-void XelaObject::setVertexData(XelaVec4<float> vec, int id) {
-	clearVertexData(id);
-	addVertexData(vec, id);
+void XelaObject::setVertexData4f(XelaObject *o, XelaVec4<float> vec, int id) {
+	XelaObject::clearVertexData(o, id);
+	XelaObject::addVertexData4f(o, vec, id);
 }
-void XelaObject::setVertexData(std::vector<XelaVec4<float>> vec, int id) {
-	clearVertexData(id);
-	addVertexData(vec, id);
-}
-void XelaObject::setVertexData(XelaVec4<float>* vec, int count, int id) {
-	clearVertexData(id);
-	addVertexData(vec, count, id);
+void XelaObject::setVertexData4fv(XelaObject *o, XelaVec4<float>* vec, int count, int id) {
+	XelaObject::clearVertexData(o, id);
+	XelaObject::addVertexData4fv(o, vec, count, id);
 }
 
-void XelaObject::setDataUpdateFrequency(int id, int freq) {
-	for (int i = 0; i < vertData.size(); i++) {
-		if (vertData[i].id == id) {
-			vertData[i].update = freq;
+void XelaObject::setDataUpdateFrequency(XelaObject *o, int id, int freq) {
+	for (int i = 0; i < o->vertData.size(); i++) {
+		if (o->vertData[i].id == id) {
+			o->vertData[i].update = freq;
 			break;
 		}
 	}
 }
 
-void XelaObject::draw(unsigned int count) {
-	glBindVertexArray(VAO);
-	glDrawElementsInstanced(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0, count);
+void XelaObject::draw(XelaObject *o, unsigned int count) {
+	glBindVertexArray(o->VAO);
+	glDrawElementsInstanced(GL_TRIANGLES, o->indices.size(), GL_UNSIGNED_INT, 0, count);
 	glBindVertexArray(0);
 }
 
-XelaVec3<float> XelaObject::getSize() {
-	return { maxX - minX, maxY - minY, maxZ - minZ };
+XelaVec3<float> XelaObject::getSize(XelaObject *o) {
+	return { o->maxX - o->minX, o->maxY - o->minY, o->maxZ - o->minZ };
 }

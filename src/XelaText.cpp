@@ -1,4 +1,9 @@
+//Xela Graphics
 #include "XelaText.h"
+#include "XelaShader.h"
+
+//C++
+#include <vector>
 
 //Vertex shader for text.
 std::string XelaText_vSrc =
@@ -44,44 +49,38 @@ std::string XelaText_fSrc =
 
 XelaShader *XelaText_shader = nullptr;
 
-XelaText::XelaText(std::string fontFilePath, int size) {
+XelaText *XelaText::genText(XelaFont *f) {
 	if (XelaText_shader == nullptr) {
-		XelaText_shader = new XelaShader(XelaText_vSrc.c_str(), nullptr, XelaText_fSrc.c_str());
+		XelaText_shader = XelaShader::genShader(XelaText_vSrc.c_str(), nullptr, XelaText_fSrc.c_str());
 	}
 
-	font = new XelaFont();
-	font->loadFont(fontFilePath, size);
-}
-XelaText::XelaText(XelaFont *f) {
-	if (XelaText_shader == nullptr) {
-		XelaText_shader = new XelaShader(XelaText_vSrc.c_str(), nullptr, XelaText_fSrc.c_str());
-	}
-
-	font = f;
+	XelaText *text = new XelaText();
+	text->font = f;
+	return text;
 }
 
-void XelaText::genTextObject() {
+static void xelaGenTextObject(XelaText *t) {
 	//Create new XelaObject.
-	if (object != nullptr) {
-		delete object;
+	if (t->object != nullptr) {
+		delete t->object;
 	}
-	object = new XelaObject();
+	t->object = XelaObject::genObject();
 
 	//Load all glyphs for the text.
 	std::vector<XelaGlyph> glyphs;
 	int suc = 0;
-	for (int i = 0; i < text.length(); i++) {
-		glyphs.push_back(font->getGlyph(text[i], &suc));
+	for (int i = 0; i < t->text.length(); i++) {
+		glyphs.push_back(t->font->getGlyph(t->font, t->text[i], &suc));
 	}
 	//Generate font texture.
-	font->genTexture();
+	t->font->genTexture(t->font);
 
 	//Object data
 	int x = 0;
 	std::vector<XelaVec2<float>> verts;
 	std::vector<XelaVec2<float>> texs;
 	std::vector<XelaVec3<unsigned int>> inds;
-	XelaFontTextureInfo info = font->getTexInfo();
+	XelaFontTextureInfo info = t->font->info;
 
 	unsigned int ind = 0;
 	for (int i = 0; i < glyphs.size(); i++) {
@@ -109,56 +108,51 @@ void XelaText::genTextObject() {
 	}
 
 	//Setup object
-	object->addVertexData(verts, 0);
-	object->addVertexData(texs, 1);
-	object->addIndices(inds);
-	object->updateData();
+	XelaObject::addVertexData2fv(t->object, verts.data(), verts.size(), 0);
+	XelaObject::addVertexData2fv(t->object, texs.data(), texs.size(), 1);
+	XelaObject::addIndices(t->object, inds.data(), inds.size());
+	XelaObject::updateData(t->object);
 
 	//Add texture to shader
-	XelaText_shader->addTexture(info.id, "text");
+	XelaShader::addTexture(XelaText_shader, info.id, "text");
 }
 
-void XelaText::setFont(std::string fontFilePath, int size) {
-	delete font;
-	font = new XelaFont();
-	font->loadFont(fontFilePath, size);
-	this->genTextObject();
+void XelaText::setFont(XelaText *t, XelaFont *f) {
+	t->font = f;
+	xelaGenTextObject(t);
 }
-void XelaText::setText(std::string t) {
-	if (t != text) {
-		text = t;
-		this->genTextObject();
+void XelaText::setText(XelaText *t, const char *s) {
+	if (s != t->text) {
+		t->text = s;
+		xelaGenTextObject(t);
 	}
 }
 
-void XelaText::setColor(XelaVec4<float> c) {
-	color = c;
+void XelaText::setColor(XelaText *t, XelaVec4<float> c) {
+	t->color = c;
 }
-void XelaText::setPosition(XelaVec3<float> p) {
-	position = p;
+void XelaText::setPosition(XelaText *t, XelaVec3<float> p) {
+	t->position = p;
 }
-void XelaText::setScale(XelaVec2<float> s) {
-	scale = s;
-}
-
-void XelaText::draw(XelaVec2<int> screenResolution) {
-	XelaText_shader->use();
-
-	XelaFontTextureInfo info = font->getTexInfo();
-
-	glUniform2f(glGetUniformLocation(XelaText_shader->getProgram(), "resolution"), screenResolution.x, screenResolution.y);
-	glUniform3f(glGetUniformLocation(XelaText_shader->getProgram(), "position"), position.x, position.y, position.z);
-	glUniform2f(glGetUniformLocation(XelaText_shader->getProgram(), "scale"), scale.x, scale.y);
-	glUniform4f(glGetUniformLocation(XelaText_shader->getProgram(), "textColor"), color.x, color.y, color.z, color.w);
-	glUniform2i(glGetUniformLocation(XelaText_shader->getProgram(), "textSize"), info.width, info.height);
-
-	object->draw(1);
+void XelaText::setScale(XelaText *t, XelaVec2<float> s) {
+	t->scale = s;
 }
 
-XelaFont *XelaText::getFont() {
-	return font;
+void XelaText::draw(XelaText *t, XelaVec2<int> screenResolution) {
+	XelaShader::use(XelaText_shader);
+
+	XelaFontTextureInfo info = t->font->info;
+
+	glUniform2f(glGetUniformLocation(XelaText_shader->shaderProgram, "resolution"), screenResolution.x, screenResolution.y);
+	glUniform3f(glGetUniformLocation(XelaText_shader->shaderProgram, "position"), t->position.x, t->position.y, t->position.z);
+	glUniform2f(glGetUniformLocation(XelaText_shader->shaderProgram, "scale"), t->scale.x, t->scale.y);
+	glUniform4f(glGetUniformLocation(XelaText_shader->shaderProgram, "textColor"), t->color.x, t->color.y, t->color.z, t->color.w);
+	glUniform2i(glGetUniformLocation(XelaText_shader->shaderProgram, "textSize"), info.width, info.height);
+
+	XelaObject::draw(t->object, 1);
 }
-XelaVec2<float> XelaText::getSize() {
-	XelaVec3<float> s = object->getSize();
+
+XelaVec2<float> XelaText::getSize(XelaText *t) {
+	XelaVec3<float> s = XelaObject::getSize(t->object);
 	return { s.x, s.y };
 }
