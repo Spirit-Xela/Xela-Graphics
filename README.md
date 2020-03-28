@@ -56,7 +56,7 @@ Handles window creation, objects, shaders, and text rendering.
 ### Getting Started
 If you haven't already installed Xela Graphics, make sure you read the [Installation](#installation) instructions to find out how.
 
-The [documentation](doc) contains information on every function in Xela Graphics you might need to use while writing a program.
+The [documentation](Doc.md) contains information on every function in Xela Graphics you might need to use while writing a program.
 
 There's also some [sample code](sample) showing some of the features of the library.
 
