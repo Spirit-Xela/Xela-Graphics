@@ -15,6 +15,7 @@ stb_image.h
 #define _XELA_GRAPHICS_H
 
 #include <vector>
+#include <cstdarg>
 
 #define XELA_GRAPHICS_VERSION_MAJOR 1
 #define XELA_GRAPHICS_VERSION_MINOR 1
@@ -43,18 +44,194 @@ extern "C" {
 //Structures
 //=====================================================================
 //Structures to store coordinates
+#ifndef _XELAVECS
+#define _XELAVECS
 template<typename T>
 struct XelaVec2 {
 	T x, y;
+
+	XelaVec2<T>() = default;
+	XelaVec2<T>(T a, T b) {
+		this->x = a;
+		this->y = b;
+	}
+
+	bool operator > (XelaVec2<T> &next) {
+		return (this->x > next.x &&this->y > next.y);
+	}
+	bool operator < (XelaVec2<T> &next) {
+		return (this->x < next.x && this->y < next.y);
+	}
+	bool operator == (XelaVec2<T> &next) {
+		return (this->x == next.x && this->y == next.y);
+	}
+	bool operator >= (XelaVec2<T> &next) {
+		return ((*this > next) || (*this == next));
+	}
+	bool operator <= (XelaVec2<T> &next) {
+		return ((*this < next) || (*this == next));
+	}
+	bool operator != (XelaVec2<T> &next) {
+		return (*this != next);
+	}
+
+	XelaVec2<T> operator + (XelaVec2<T> &next) {
+		return { this->x + next.x, this->y + next.y };
+	}
+	XelaVec2<T> operator - (XelaVec2<T> &next) {
+		return { this->x - next.x, this->y - next.y };
+	}
+
+	T operator [] (size_t pos) {
+		switch (pos) {
+			case 0:
+				return x;
+				break;
+			case 1:
+				return y;
+				break;
+			default:
+				return *new T();
+				break;
+		}
+	}
 };
 template<typename T>
 struct XelaVec3 {
 	T x, y, z;
+
+	XelaVec3<T>() = default;
+	XelaVec3<T>(T a, T b, T c) {
+		this->x = a;
+		this->y = b;
+		this->z = c;
+	}
+	XelaVec3<T>(XelaVec2<T> &from) {
+		this->x = from.x;
+		this->y = from.y;
+	}
+
+	operator XelaVec2<T>() {
+		return { (T)this->x, (T)this->y };
+	}
+
+	bool operator > (XelaVec3<T> &next) {
+		return (this->x > next.x &&this->y > next.y &&this->z > next.z);
+	}
+	bool operator < (XelaVec3<T> &next) {
+		return (this->x < next.x && this->y < next.y && this->z < next.z);
+	}
+	bool operator == (XelaVec3<T> &next) {
+		return (this->x == next.x && this->y == next.y && this->z == next.z);
+	}
+	bool operator >= (XelaVec3<T> &next) {
+		return ((*this > next) || (*this == next));
+	}
+	bool operator <= (XelaVec3<T> &next) {
+		return ((*this < next) || (*this == next));
+	}
+	bool operator != (XelaVec3<T> &next) {
+		return (*this != next);
+	}
+
+	XelaVec3<T> operator + (XelaVec3<T> &next) {
+		return { this->x + next.x, this->y + next.y, this->z + next.z };
+	}
+	XelaVec3<T> operator - (XelaVec3<T> &next) {
+		return { this->x - next.x, this->y - next.y, this->z - next.z };
+	}
+
+	T operator [] (size_t pos) {
+		switch (pos) {
+			case 0:
+				return x;
+				break;
+			case 1:
+				return y;
+				break;
+			case 2:
+				return z;
+				break;
+			default:
+				return *new T();
+				break;
+		}
+	}
 };
 template<typename T>
 struct XelaVec4 {
 	T x, y, z, w;
+
+	XelaVec4<T>() = default;
+	XelaVec4<T>(T a, T b, T c, T d) {
+		this->x = a;
+		this->y = b;
+		this->z = c;
+		this->w = d;
+	}
+	XelaVec4<T>(XelaVec2<T> &from) {
+		this->x = from.x;
+		this->y = from.y;
+	}
+	XelaVec4<T>(XelaVec3<T> &from) {
+		this->x = from.x;
+		this->y = from.y;
+		this->z = from.z;
+	}
+
+	operator XelaVec2<T>() {
+		return { (T)this->x, (T)this->y };
+	}
+	operator XelaVec3<T>() {
+		return { (T)this->x, (T)this->y };
+	}
+
+	bool operator > (XelaVec4<T> &next) {
+		return (this->x > next.x &&this->y > next.y &&this->z > next.z &&this->w > next.w);
+	}
+	bool operator < (XelaVec4<T> &next) {
+		return (this->x < next.x && this->y < next.y && this->z < next.z && this->w < next.w);
+	}
+	bool operator == (XelaVec4<T> &next) {
+		return (this->x == next.x && this->y == next.y && this->z == next.z && this->w == next.w);
+	}
+	bool operator >= (XelaVec4<T> &next) {
+		return ((*this > next) || (*this == next));
+	}
+	bool operator <= (XelaVec4<T> &next) {
+		return ((*this < next) || (*this == next));
+	}
+	bool operator != (XelaVec4<T> &next) {
+		return (*this != next);
+	}
+
+	XelaVec4<T> operator + (XelaVec4<T> &next) {
+		return { this->x + next.x, this->y + next.y, this->z + next.z, this->w + next.w };
+	}
+	XelaVec4<T> operator - (XelaVec4<T> &next) {
+		return { this->x - next.x, this->y - next.y, this->z - next.z, this->w - next.w };
+	}
+
+	T operator [] (size_t pos) {
+		switch (pos) {
+			case 0:
+				return x;
+				break;
+			case 1:
+				return y;
+				break;
+			case 2:
+				return z;
+				break;
+			case 3:
+				return w;
+			default:
+				return *new T();
+				break;
+		}
+	}
 };
+#endif
 //Strcture to store vertex information. Used in XelaObject to keep track of data meant to go to different locations in shaders.
 template<typename T>
 struct XelaVertexData {
