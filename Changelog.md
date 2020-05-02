@@ -1,8 +1,13 @@
 # XelaGraphics Changelog
 
+### Version 1.2.1
+Updated XelaVectors to add support for some operators.
+
+Added makefile so XelaGraphics can be compiled on linux.
+<br><br>
+
 ### Version 1.2.0
-#### tl;dr
-Xela Graphics was changed so that all classes are now structs. All class functions are now statis functions. This was to allow building Xela Graphics as a DLL on Windows.
+XelaGraphics was changed so that all classes are now structs. All class functions are now statis functions. This was to allow building Xela Graphics as a DLL on Windows.
 
 XelaImage was added to load/store textures
 
