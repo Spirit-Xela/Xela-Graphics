@@ -1,0 +1,9 @@
+#Compile
+make
+make clean
+#Move libxelagraphics.so to library folder
+mv libxelagraphics.so /usr/lib/
+#Create directories for header files
+mkdir -p /usr/include/xela/graphics/
+#Move header files
+cp Headers/*.h /usr/include/xela/graphics/
