@@ -56,6 +56,8 @@ Handles window creation, objects, shaders, and text rendering.
       * freetype.dll: xelagraphics_(version)_(x86/x64)/freetype_(version)/(win32/win64)
     * Click apply.
 * You're done! You can now use Xela Graphics in your project.
+* When including header files from XelaGraphics in your project, be sure to prefix header file names with xela/graphics/
+  * Such as `#include <xela/graphics/XelaGraphics.h>`
 </details>
 
 <details>
@@ -70,7 +72,7 @@ Handles window creation, objects, shaders, and text rendering.
     * Header files will be in /usr/include/xela/graphics, so in your programs make sure to prefix header includes with xela/graphics.
       * Such as `#include <xela/graphics/XelaGraphics.h>`
   * When compiling a program that uses XelaGraphics, link XelaGraphics and its dependencies.
-    With G++, this would look like `g++ -lxelagraphics -lglfw -lGLEW -lfreetype -I/usr/include/freetype2 <Source files>`
+    * With G++, this would look like `g++ -lxelagraphics -lglfw -lGLEW -lfreetype -I/usr/include/freetype2 <Source files>`
 
 </details>
 
