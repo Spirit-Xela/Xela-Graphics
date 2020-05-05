@@ -72,7 +72,7 @@ Handles window creation, objects, shaders, and text rendering.
     * Header files will be in /usr/include/xela/graphics, so in your programs make sure to prefix header includes with xela/graphics.
       * Such as `#include <xela/graphics/XelaGraphics.h>`
   * When compiling a program that uses XelaGraphics, link XelaGraphics and its dependencies.
-    * With G++, this would look like `g++ -lxelagraphics -lglfw -lGLEW -lfreetype -I/usr/include/freetype2 <Source files>`
+    * With G++, this would look like `g++ -I/usr/include/freetype2 <Source files> -lxelagraphics -lglfw -lGLEW -lfreetype`
 
 </details>
 
